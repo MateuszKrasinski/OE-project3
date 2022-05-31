@@ -6,15 +6,104 @@ from deap import base
 from deap import creator
 from deap import tools
 
+from sklearn import metrics
+from sklearn import model_selection
+from sklearn.model_selection import StratifiedKFold
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.svm import SVC
+
 from crossover import Crossover
 from grade_strategy import GradeStrategy
 from mutation import Mutation
 from selection import Selection
 from utils import draw_chart, save_results_to_csv
 from numpy.random import randint
+import pandas as pd
+
+from sklearn import model_selection
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.svm import SVC
+
+pd.set_option('display.max_columns', None)
+df=pd.read_csv("C:/Users/milos/Desktop/data.csv", sep=',')
+y=df['Status']
+df.drop('Status', axis=1, inplace=True)
+df.drop('ID', axis=1, inplace=True)
+df.drop('Recording', axis=1, inplace=True)
+numberOfAtributtes= len(df.columns)
+print(numberOfAtributtes)
+
+mms = MinMaxScaler()
+df_norm = mms.fit_transform(df)
+clf = SVC()
+scores = model_selection.cross_val_score(clf, df_norm, y,
+                                         cv=5, scoring='accuracy',n_jobs=-1)
+print(scores.mean())
+
 
 
 class GeneticAlgorithm:
+    @staticmethod
+    def SVCParameters(numberFeatures, icls):
+        genome = list()
+        # kernel
+        listKernel = ["scale", " auto"]
+        genome.append(listKernel[random.randint(0, 1)])
+        # c
+        k = random.uniform(0.1, 100)
+        genome.append(k)
+        # degree
+        genome.append(random.randint(1, 5))
+        # gamma
+        gamma = random.uniform(0.001, 5)
+        genome.append(gamma)
+        # coeff
+        coeff = random.uniform(0.01, 10)
+        genome.append(coeff)
+        return icls(genome)
+
+    @staticmethod
+    def SVCParametersFitness(y, df, numberOfAtributtes, individual):
+        split = 5
+        cv = StratifiedKFold(n_splits=split)
+        mms = MinMaxScaler()
+        df_norm = mms.fit_transform(df)
+        estimator = SVC(kernel=individual[0], C=individual[1], degree=individual[2],
+                        gamma=individual[3], coef0 = individual[4], random_state = 101)
+        resultSum = 0
+        for train, test in cv.split(df_norm, y):
+            if type(df_norm[train]) == str or type(y[train]) == str:
+                break
+            estimator.fit(df_norm[train], y[train])
+            predicted = estimator.predict(df_norm[test])
+            expected = y[test]
+            tn, fp, fn, tp = metrics.confusion_matrix(expected, predicted).ravel()
+            result = (tp + tn) / (tp + fp + tn + fn)
+
+            resultSum = resultSum + result  #
+        return resultSum / split,
+
+    def mutationSVC(individual):
+        numberParamer = random.randint(0, len(individual) - 1)
+        if numberParamer == 0:
+            # kernel
+            listKernel = ["scale", " auto"]
+            individual[0] = listKernel[random.randint(0, 3)]
+        elif numberParamer == 1:
+            k = random.uniform(0.1, 100)
+            individual[1] = k
+        elif numberParamer == 2:
+            # degree
+            individual[2] = random.uniform(0.1, 5)
+        elif numberParamer == 3:
+            # gamma
+            gamma = random.uniform(0.01, 5)
+            individual[3] = gamma
+        elif numberParamer == 4:
+            # coeff
+            coeff = random.uniform(0.1, 20)
+            individual[2] = coeff
+
     @staticmethod
     def decodeInd(individual):
         chromosome_length = 20
@@ -68,9 +157,12 @@ class GeneticAlgorithm:
 
     @staticmethod
     def register_functions(toolbox):
-        toolbox.register("individual", GeneticAlgorithm.individual, creator.Individual)
+        toolbox.register("individual", GeneticAlgorithm.SVCParameters, numberOfAtributtes, creator.Individual)
         toolbox.register("population", tools.initRepeat, list, toolbox.individual)
-        toolbox.register("evaluate", GeneticAlgorithm.fitness_function)
+        toolbox.register("evaluate", GeneticAlgorithm.SVCParametersFitness, y, df, numberOfAtributtes)
+        # toolbox.register("individual", GeneticAlgorithm.individual, creator.Individual)
+        # toolbox.register("population", tools.initRepeat, list, toolbox.individual)
+        # toolbox.register("evaluate", GeneticAlgorithm.fitness_function)
 
     @staticmethod
     def run(algorithm_params, processes=1):
@@ -82,6 +174,7 @@ class GeneticAlgorithm:
         pop = toolbox.population(n=algorithm_params.size_population)
         fitnesses = list(toolbox.map(toolbox.evaluate, pop))
         for ind, fit in zip(pop, fitnesses):
+            tmp = [fit]
             ind.fitness.values = fit
 
         g, number_elitism = 0, 1
