@@ -16,15 +16,13 @@ from crossover import Crossover
 from grade_strategy import GradeStrategy
 from mutation import Mutation
 from selection import Selection
-from utils import draw_chart, save_results_to_csv
+from utils import draw_chart, save_results_to_csv, print_results
 from numpy.random import randint
 import pandas as pd
 
-from sklearn import model_selection
-from sklearn.preprocessing import MinMaxScaler
-from sklearn.svm import SVC
 
 pd.set_option('display.max_columns', None)
+numberOfAtributtes = len(df.columns)
 df=pd.read_csv("C:/Users/milos/Downloads/oe4.csv", sep=',')
 y=df['Cath']
 df.drop('Cath', axis=1, inplace=True)
@@ -41,25 +39,28 @@ scores = model_selection.cross_val_score(clf, df_norm, y,
 print(scores.mean())
 
 
-
 class GeneticAlgorithm:
     @staticmethod
     def SVCParameters(numberFeatures, icls):
         genome = list()
         # kernel
-        # listKernel = ["scale", " auto"]
-        # genome.append(listKernel[random.randint(0, 1)])
+        list_kernel = ["linear", "rbf", "poly", "sigmoid"]
+        genome.append(list_kernel[random.randint(0, 1)])
         # c
         k = random.uniform(0.1, 100)
         genome.append(k)
         # degree
-        genome.append(random.randint(1, 5))
+        genome.append(random.uniform(0.1, 5))
         # gamma
         gamma = random.uniform(0.001, 5)
         genome.append(gamma)
         # coeff
         coeff = random.uniform(0.01, 10)
         genome.append(coeff)
+
+        for i in range(0, numberFeatures):
+            genome.append(random.randint(0, 1))
+
         return icls(genome)
 
     @staticmethod
@@ -67,13 +68,13 @@ class GeneticAlgorithm:
         split = 5
         cv = StratifiedKFold(n_splits=split)
         mms = MinMaxScaler()
-        df_norm = mms.fit_transform(df)
-        estimator = SVC(C=individual[0], degree=individual[1],
-                        gamma=individual[2], coef0 = individual[3], random_state = 101)
+        df_norm = GeneticAlgorithm._df_norm(numberOfAtributtes, individual, df)
+        estimator = SVC(kernel=individual[0], C=individual[1], degree=individual[2],
+                        gamma=individual[3], coef0=individual[4], random_state=1)
         resultSum = 0
+
         for train, test in cv.split(df_norm, y):
-            if type(df_norm[train]) == str or type(y[train]) == str:
-                break
+            print('trenuje')
             estimator.fit(df_norm[train], y[train])
             predicted = estimator.predict(df_norm[test])
             expected = y[test]
@@ -87,9 +88,8 @@ class GeneticAlgorithm:
         numberParamer = random.randint(0, len(individual) - 1)
         if numberParamer == 0:
             # kernel
-            # listKernel = ["scale", " auto"]
-            # individual[0] = listKernel[random.randint(0, 1)]
-            pass
+            listKernel = ["linear", "rbf", "poly", "sigmoid"]
+            individual[0] = listKernel[random.randint(0, 3)]
         elif numberParamer == 1:
             k = random.uniform(0.1, 100)
             individual[0] = k
@@ -103,7 +103,12 @@ class GeneticAlgorithm:
         elif numberParamer == 4:
             # coeff
             coeff = random.uniform(0.1, 20)
-            individual[3] = coeff
+            individual[2] = coeff
+        else:
+            if individual[numberParamer] == 0:
+                individual[numberParamer] = 1
+            else:
+                individual[numberParamer] = 0
 
     @staticmethod
     def decodeInd(individual):
@@ -131,13 +136,13 @@ class GeneticAlgorithm:
     @staticmethod
     def individual(icls):
         genome = list()
-        for x in range(0, 40):
-            genome.append(randint(0, 2))
+        genome.append(random.uniform(-1.5, 4))
+        genome.append(random.uniform(-3, 4))
+
         return icls(genome)
 
     @staticmethod
-    def fitness_function(individual):
-        ind = GeneticAlgorithm.decodeInd(individual)
+    def fitness_function(ind):
         result = math.sin((ind[0] + ind[1])) + math.pow(
             (ind[0] - ind[1]), 2) - 1.5 * ind[0] + 2.5 * ind[1] + 1
         return result,
@@ -231,5 +236,18 @@ class GeneticAlgorithm:
             avg_results.append(mean)
             std_results.append(std)
 
-        save_results_to_csv(best_ind, best_ind, mean, std, algorithm_params)
+        save_results_to_csv((best_ind), best_ind, mean, std, algorithm_params)
         draw_chart(algorithm_params, best_results, avg_results, std_results, g)
+        print_results(pop, g, invalid_ind)
+
+    @staticmethod
+    def _df_norm(numberOfAtributtes, individual, df):
+        list_columns_to_drop = []  # lista cech do usuniecia
+        for i in range(numberOfAtributtes, len(individual)):
+            if individual[i] == 0:  # gdy atrybut ma zero to usuwamy cechę
+                list_columns_to_drop.append(i - numberOfAtributtes)
+
+        df_selected_features = df.drop(df.columns[list_columns_to_drop], axis=1, inplace=False)
+        mms = MinMaxScaler()
+
+        return mms.fit_transform(df_selected_features)

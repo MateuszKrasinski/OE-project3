@@ -15,8 +15,8 @@ def run():
                 for mut in Mutation.allMutation:
                     print(f"{gs} {sel} {cx} {mut}")
                     GeneticAlgorithm.run(
-                        AlgorithmParams(gs, sel, cx, mut, size_population=100, probability_mutation=0.2,
-                                        probability_crossover=0.8, number_iteration=200), False)
+                        AlgorithmParams(gs, sel, cx, mut, size_population=10, probability_mutation=0.2,
+                                        probability_crossover=0.8, number_iteration=20), False)
 
 
 if __name__ == '__main__':
