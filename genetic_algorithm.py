@@ -25,11 +25,11 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.svm import SVC
 
 pd.set_option('display.max_columns', None)
-df=pd.read_csv("C:/Users/milos/Desktop/data.csv", sep=',')
-y=df['Status']
-df.drop('Status', axis=1, inplace=True)
-df.drop('ID', axis=1, inplace=True)
-df.drop('Recording', axis=1, inplace=True)
+df=pd.read_csv("C:/Users/milos/Downloads/oe4.csv", sep=',')
+y=df['Cath']
+df.drop('Cath', axis=1, inplace=True)
+# df.drop('ID', axis=1, inplace=True)
+# df.drop('Recording', axis=1, inplace=True)
 numberOfAtributtes= len(df.columns)
 print(numberOfAtributtes)
 
@@ -47,8 +47,8 @@ class GeneticAlgorithm:
     def SVCParameters(numberFeatures, icls):
         genome = list()
         # kernel
-        listKernel = ["scale", " auto"]
-        genome.append(listKernel[random.randint(0, 1)])
+        # listKernel = ["scale", " auto"]
+        # genome.append(listKernel[random.randint(0, 1)])
         # c
         k = random.uniform(0.1, 100)
         genome.append(k)
@@ -68,8 +68,8 @@ class GeneticAlgorithm:
         cv = StratifiedKFold(n_splits=split)
         mms = MinMaxScaler()
         df_norm = mms.fit_transform(df)
-        estimator = SVC(kernel=individual[0], C=individual[1], degree=individual[2],
-                        gamma=individual[3], coef0 = individual[4], random_state = 101)
+        estimator = SVC(C=individual[0], degree=individual[1],
+                        gamma=individual[2], coef0 = individual[3], random_state = 101)
         resultSum = 0
         for train, test in cv.split(df_norm, y):
             if type(df_norm[train]) == str or type(y[train]) == str:
@@ -87,22 +87,23 @@ class GeneticAlgorithm:
         numberParamer = random.randint(0, len(individual) - 1)
         if numberParamer == 0:
             # kernel
-            listKernel = ["scale", " auto"]
-            individual[0] = listKernel[random.randint(0, 3)]
+            # listKernel = ["scale", " auto"]
+            # individual[0] = listKernel[random.randint(0, 1)]
+            pass
         elif numberParamer == 1:
             k = random.uniform(0.1, 100)
-            individual[1] = k
+            individual[0] = k
         elif numberParamer == 2:
             # degree
-            individual[2] = random.uniform(0.1, 5)
+            individual[1] = random.uniform(0.1, 5)
         elif numberParamer == 3:
             # gamma
             gamma = random.uniform(0.01, 5)
-            individual[3] = gamma
+            individual[2] = gamma
         elif numberParamer == 4:
             # coeff
             coeff = random.uniform(0.1, 20)
-            individual[2] = coeff
+            individual[3] = coeff
 
     @staticmethod
     def decodeInd(individual):
@@ -230,5 +231,5 @@ class GeneticAlgorithm:
             avg_results.append(mean)
             std_results.append(std)
 
-        save_results_to_csv(GeneticAlgorithm.decodeInd(best_ind), best_ind, mean, std, algorithm_params)
+        save_results_to_csv(best_ind, best_ind, mean, std, algorithm_params)
         draw_chart(algorithm_params, best_results, avg_results, std_results, g)
