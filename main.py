@@ -1,22 +1,20 @@
+import time
+
 from algorithm_params import AlgorithmParams
+from classifier import Classifiers
 from crossover import Crossover
 from genetic_algorithm import GeneticAlgorithm
 from grade_strategy import GradeStrategy
 from mutation import Mutation
 from selection import Selection
-from utils import add_headers_csv
 
 
 def run():
-    add_headers_csv()
-    for gs in GradeStrategy.grade_strategies:
-        for sel in Selection.allSelection:
-            for cx in Crossover.allCrossover:
-                for mut in Mutation.allMutation:
-                    print(f"{gs} {sel} {cx} {mut}")
-                    GeneticAlgorithm.run(
-                        AlgorithmParams(gs, sel, cx, mut, size_population=10, probability_mutation=0.2,
-                                        probability_crossover=0.8, number_iteration=20), False)
+    GeneticAlgorithm.run(
+        AlgorithmParams(GradeStrategy.max, Selection.best, Crossover.one_point, Mutation.shuffle_indexes,
+                        size_population=100, probability_mutation=0.2, probability_crossover=0.8,
+                        number_iteration=100, classifier=Classifiers.extra_tree_classifier), processes=8,
+        use_global_operators=False)
 
 
 if __name__ == '__main__':
